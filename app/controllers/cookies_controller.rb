@@ -12,7 +12,7 @@ class CookiesController < ApplicationController
     }.compact.join("&")
     
     respond_to do |format|
-      format.html { redirect_to "http://54.175.55.23/sync?#{url}", status: 301 }
+      format.html { redirect_to "#{request.protocol}dev0.pin-pg.com/sync?#{url}", status: 301 }
     end
   end
 end
