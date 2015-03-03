@@ -1,3 +1,5 @@
+load "#{Rails.root.to_s}/cookie_sync_model.rb" unless defined? DSPCookieSync
+
 class CookiesController < ApplicationController
   def pixel
     p = {
@@ -14,5 +16,23 @@ class CookiesController < ApplicationController
     respond_to do |format|
       format.html { redirect_to "#{request.protocol}dev0.pin-pg.com/sync?#{url}", status: 301 }
     end
+  end
+
+  def upload
+    body = request.body.read
+    data_request = DSPCookieSync::UpdateUsersDataRequest.new
+    data_request.parse_from_string(body)
+    data_response = DSPCookieSync::UpdateUsersDataResponse.new
+    data_response.status = DSPCookieSync::ErrorCode::NO_ERROR
+
+    data_request.ops.each do |user_data_operation|
+      info = DSPCookieSync::NotificationInfo.new
+      info.user_id = user_data_operation.user_id
+      info.notification_code = DSPCookieSync::NotificationCode::INACTIVE_COOKIE
+
+      data_response.notifications << info
+    end
+    
+    send_data data_response.serialize_to_string
   end
 end

@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   get 'pixel' => "cookies#pixel"
-
+  post 'upload' => "cookies#upload"
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
