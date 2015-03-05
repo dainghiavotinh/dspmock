@@ -23,15 +23,19 @@ class CookiesController < ApplicationController
     data_request = DSPCookieSync::UpdateUsersDataRequest.new
     data_request.parse_from_string(body)
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
-    data_response.status = DSPCookieSync::ErrorCode::NO_ERROR
+    if data_request.ops.empty?
+      data_response.status = DSPCookieSync::ErrorCode::EMPTY_REQUEST
+    else
+      data_response.status = DSPCookieSync::ErrorCode::NO_ERROR
 
-    data_request.ops.each do |user_data_operation|
-      info = DSPCookieSync::NotificationInfo.new
-      info.user_id = user_data_operation.user_id
-      info.notification_code = DSPCookieSync::NotificationCode::INACTIVE_COOKIE
+      data_request.ops.each do |user_data_operation|
+        info = DSPCookieSync::NotificationInfo.new
+        info.user_id = user_data_operation.user_id
+        info.notification_code = DSPCookieSync::NotificationCode::INACTIVE_COOKIE
 
-      data_response.notifications << info
-    end
+        data_response.notifications << info
+      end
+     end
     
     send_data data_response.serialize_to_string
   end
