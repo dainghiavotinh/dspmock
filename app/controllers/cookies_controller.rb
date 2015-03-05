@@ -23,20 +23,46 @@ class CookiesController < ApplicationController
     data_request = DSPCookieSync::UpdateUsersDataRequest.new
     data_request.parse_from_string(body)
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
+    status = DSPCookieSync::ErrorCode::NO_ERROR
+    has_success = false
+    has_error = false
     if data_request.ops.empty?
       data_response.status = DSPCookieSync::ErrorCode::EMPTY_REQUEST
     else
       data_response.status = DSPCookieSync::ErrorCode::NO_ERROR
 
       data_request.ops.each do |user_data_operation|
-        info = DSPCookieSync::NotificationInfo.new
-        info.user_id = user_data_operation.user_id
-        info.notification_code = DSPCookieSync::NotificationCode::INACTIVE_COOKIE
 
-        data_response.notifications << info
+        if valid_cookie?(user_data_operation.user_id)
+          info = DSPCookieSync::NotificationInfo.new
+
+          info.user_id = user_data_operation.user_id
+          info.notification_code = DSPCookieSync::NotificationCode::INACTIVE_COOKIE
+
+          data_response.notifications << info
+          has_success = true
+        else
+          error = DSPCookieSync::ErrorInfo.new
+          error.user_id = user_data_operation.user_id
+          error.error_code = DSPCookieSync::ErrorCode::BAD_COOKIE
+
+          data_response.errors << error
+          has_error = true
+        end
       end
-     end
-    
+      if has_success 
+        status = has_error ? DSPCookieSync::ErrorCode::PARTIAL_SUCCESS : DSPCookieSync::ErrorCode::NO_ERROR 
+      else
+        status = DSPCookieSync::ErrorCode::BAD_COOKIE
+      end
+      data_response.status = status
+    end
+
     send_data data_response.serialize_to_string
+  end
+
+  private 
+  def valid_cookie? user_id
+    !user_id.blank? && user_id.length >= 32
   end
 end
