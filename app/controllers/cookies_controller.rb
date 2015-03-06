@@ -20,10 +20,13 @@ class CookiesController < ApplicationController
 
   def upload
     body = request.body.read
-
     # Initial response
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
     status = DSPCookieSync::ErrorCode::NO_ERROR
+
+    data_request = DSPCookieSync::UpdateUsersDataRequest.new
+    data_request.parse_from_string(body)
+    Rails.logger.debug(data_request)
 
     # Parse data
     data_request = DSPCookieSync::UpdateUsersDataRequest.new
@@ -52,6 +55,7 @@ class CookiesController < ApplicationController
 
           data_response.errors << error
           has_error = true
+	  Rails.logger.debug("bad cookie")
         end
       end
       if has_success
