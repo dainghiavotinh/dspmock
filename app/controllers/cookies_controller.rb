@@ -20,17 +20,21 @@ class CookiesController < ApplicationController
 
   def upload
     body = request.body.read
-    data_request = DSPCookieSync::UpdateUsersDataRequest.new
-    data_request.parse_from_string(body)
+
+    # Initial response
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
     status = DSPCookieSync::ErrorCode::NO_ERROR
+
+    # Parse data
+    data_request = DSPCookieSync::UpdateUsersDataRequest.new
+    data_request.parse_from_string(body)
+
     has_success = false
     has_error = false
     if data_request.ops.empty?
+      # EMPTY REQUEST
       data_response.status = DSPCookieSync::ErrorCode::EMPTY_REQUEST
     else
-      data_response.status = DSPCookieSync::ErrorCode::NO_ERROR
-
       data_request.ops.each do |user_data_operation|
 
         if valid_cookie?(user_data_operation.user_id)
@@ -50,9 +54,11 @@ class CookiesController < ApplicationController
           has_error = true
         end
       end
-      if has_success 
+      if has_success
+        # PARTIAL_SUCCESS or NO_ERROR
         status = has_error ? DSPCookieSync::ErrorCode::PARTIAL_SUCCESS : DSPCookieSync::ErrorCode::NO_ERROR 
       else
+        # BAD_COOKIE all of user_id is invalid
         status = DSPCookieSync::ErrorCode::BAD_COOKIE
       end
       data_response.status = status
