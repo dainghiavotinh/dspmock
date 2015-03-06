@@ -22,6 +22,7 @@ class CookiesController < ApplicationController
     body = request.body.read
     data_request = DSPCookieSync::UpdateUsersDataRequest.new
     data_request.parse_from_string(body)
+    Rails.logger.debug(data_request)
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
     status = DSPCookieSync::ErrorCode::NO_ERROR
     has_success = false
@@ -48,6 +49,7 @@ class CookiesController < ApplicationController
 
           data_response.errors << error
           has_error = true
+	  Rails.logger.debug("bad cookie")
         end
       end
       if has_success 
