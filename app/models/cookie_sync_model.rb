@@ -26,13 +26,6 @@
 #     //  service.  Must  always  be  present.  Specifies  which  user  this
 #     //  operation  applies  to.
 #     optional  string  user_id  =  1  [default  =  ""];;
-#     //  The  following  two  fields  are  only  populated  for  user  attribute
-#     //  operations.  NOT  SUPPORTED  currently.
-#     //
-#     optional  int64  attribute_id  =  2  [default  =  0];;
-#     //  Rows  to  be  added  to  the  attribute  table.
-#     //  NOT  SUPPORTED  currently.
-#     repeated  AttributeRow  attribute_rows  =  3;;
 #     //  The  following  two  fields  are  only  populated  for  user  list
 #     //  operations.
 #     //
@@ -54,6 +47,10 @@
 #     //  These  ids  don't  have  any  semantics  for  Google  and  are  just  used  as
 #     //  labels  for  reporting  purposes.
 #     optional  int32  data_source_id  =  7  [default  =  0];;
+#     //  Same as time_added_to_user_list but in finer grained time, which is in
+#     //  micro seconds. Only one of the two timestamp will be used, and if both are
+#     //  specified, time_added_to_user_list_in_usec will be used.
+#     optional int64 time_added_to_user_list_in_usec = 8 [default = 0];;
 # }
 # 
 # //  This  protocol  buffer  is  used  to  update  user  attributes.  It  is  sent
@@ -63,8 +60,6 @@
 # message  UpdateUsersDataRequest  {
 #     //  Multiple  operations  over  user  attributes  or  user  lists.
 #     repeated  UserDataOperation  ops  =  1;;
-#         //  Sending  notifications  back.
-#     optional  bool  send_notifications  =  2  [default  =  false];;
 # }
 # 
 # //  Response  error  codes.
@@ -93,8 +88,10 @@
 #     EMPTY_REQUEST  =  9;;
 #     //  e.g.,  some  of  backend  services  were  unavailable.
 #     INTERNAL_ERROR  =  10;;
+#     //  The timestamp is a past/future time that is too far from current time.
+#     BAD_TIMESTAMP = 12;;
 #     //  Number  of  error  codes
-#     NUM_ERROR_CODES  =  11;;
+#     NUM_ERROR_CODES  =  13;;
 # }
 # 
 # //  Information  about  an  individual  error
@@ -110,22 +107,6 @@
 #     //  a  particular  attribute  was  bad  regardless  of  a  cookie.
 #     optional  string  user_id  =  3  [default  =  ""];;
 #     optional  ErrorCode  error_code  =  4;;
-# }
-# 
-# //  Notification  code.
-# enum  NotificationCode  {
-#     //  If  there  is  no  activity  for  the  cookie  for  a  certain  period  of  time  in
-#     //    days,  then  the  cookie  is  inactive.
-#     INACTIVE_COOKIE  =  0;;
-# }
-# 
-# //  Information  about  notification  per  cookie
-# //
-# //  Next  tag:  3
-# message  NotificationInfo  {
-#     //  notification  for  the  cookie  id
-#     optional  string  user_id  =  1  [default  =  ""];;
-#     optional  NotificationCode  notification_code  =  2;;
 # }
 # 
 # //  Response  to  the  UpdateUsersDataRequest.  Sent  in  HTTP  response  to
@@ -144,17 +125,13 @@
 #     //  Each  operation  that  failed  is  reported  as  a  separate  error  here
 #     //  when  status  ==  PARTIAL_SUCCESS.
 #     repeated  ErrorInfo  errors  =  2;;
-#     //  Useful,  non-­error,  information  about  the  user  ids  in  the  request.
-#     //  Each  NotificationInfo  provides  information  about  a  single  user  id.
-#     //  Only  sent  if  UpdateUsersDataRequest.send_notifications  is  set  to  true.
-#     repeated  NotificationInfo  notifications  =  3;;
 # }
 require 'protobuf/message/message'
 require 'protobuf/message/enum'
 require 'protobuf/message/service'
 require 'protobuf/message/extend'
 
-module DSPCookieSync
+module DspCookieSync
   class AttributeRow < ::Protobuf::Message
     defined_in __FILE__
     class Column < ::Protobuf::Message
@@ -171,18 +148,16 @@ module DSPCookieSync
   class UserDataOperation < ::Protobuf::Message
     defined_in __FILE__
     optional :string, :user_id, 1, :default => ""
-    optional :int64, :attribute_id, 2, :default => 0
-    repeated :AttributeRow, :attribute_rows, 3
     optional :int64, :user_list_id, 4, :default => 0
     optional :int64, :time_added_to_user_list, 5, :default => 0
     optional :bool, :delete, 6, :default => false
     optional :int32, :data_source_id, 7, :default => 0
+    optional :int64, :time_added_to_user_list_in_usec, 8, :default => 0
   end
   
   class UpdateUsersDataRequest < ::Protobuf::Message
     defined_in __FILE__
     repeated :UserDataOperation, :ops, 1
-    optional :bool, :send_notifications, 2, :default => false
   end
   
   class ErrorCode < ::Protobuf::Enum
@@ -198,32 +173,23 @@ module DSPCookieSync
     REQUEST_TOO_BIG = value(:REQUEST_TOO_BIG, 8)
     EMPTY_REQUEST = value(:EMPTY_REQUEST, 9)
     INTERNAL_ERROR = value(:INTERNAL_ERROR, 10)
-    NUM_ERROR_CODES = value(:NUM_ERROR_CODES, 11)
+    BAD_TIMESTAMP = value(:BAD_TIMESTAMP, 12)
+    NUM_ERROR_CODES = value(:NUM_ERROR_CODES, 13)
   end
   
   class ErrorInfo < ::Protobuf::Message
     defined_in __FILE__
-    optional :int64, :attribute_id, 1, :default => 0
     optional :int64, :user_list_id, 2, :default => 0
     optional :string, :user_id, 3, :default => ""
     optional :ErrorCode, :error_code, 4
-  end
-  
-  class NotificationCode < ::Protobuf::Enum
-    defined_in __FILE__
-    INACTIVE_COOKIE = value(:INACTIVE_COOKIE, 0)
-  end
-  
-  class NotificationInfo < ::Protobuf::Message
-    defined_in __FILE__
-    optional :string, :user_id, 1, :default => ""
-    optional :NotificationCode, :notification_code, 2
   end
   
   class UpdateUsersDataResponse < ::Protobuf::Message
     defined_in __FILE__
     optional :ErrorCode, :status, 1
     repeated :ErrorInfo, :errors, 2
-    repeated :NotificationInfo, :notifications, 3
+  end
+
+  class ResponseError < StandardError
   end
 end

@@ -39,5 +39,6 @@ gem 'spring',        group: :development
 # gem 'debugger', group: [:development, :test]
 
 gem 'ruby_protobuf'
-gem 'thin'
+# gem 'thin'
 gem 'pry'
+gem 'thin'

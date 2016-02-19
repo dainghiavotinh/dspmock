@@ -22,6 +22,7 @@ class CookiesController < ApplicationController
 
   def upload
     body = request.body.read
+    body = ActiveSupport::Gzip.decompress body
     # Initial response
     data_response = DSPCookieSync::UpdateUsersDataResponse.new
     status = DSPCookieSync::ErrorCode::NO_ERROR
